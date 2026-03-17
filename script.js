@@ -1316,9 +1316,10 @@ async function restorePaidOrderFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const orderId = String(params.get("Shp_orderId") || params.get("order") || "").trim();
   const paymentState = String(params.get("payment") || "").trim();
+  const paymentFailedByHash = window.location.hash === "#payment-failed";
 
   if (!orderId) {
-    if (paymentState === "failed") {
+    if (paymentState === "failed" || paymentFailedByHash) {
       ticketForm.hidden = true;
       paymentForm.hidden = false;
       resultCard.hidden = true;
@@ -1328,6 +1329,9 @@ async function restorePaidOrderFromQuery() {
         email: "Robokassa вернула пользователя без подтверждения оплаты.",
       });
       setStep("payment");
+      if (paymentFailedByHash) {
+        window.history.replaceState({}, "", window.location.pathname + window.location.search);
+      }
     }
     return;
   }
