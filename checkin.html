@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Пельмень Варень | контроль входа</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@500;600;700&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-protected-role="checkin">
+  <main class="checkin-page">
+    <section id="auth-screen" class="section auth-screen">
+      <article class="admin-panel ornament-card auth-card">
+        <div class="section-heading">
+          <p class="eyebrow">Закрытый доступ</p>
+          <h1 class="checkin-title">Вход во входной контроль.</h1>
+        </div>
+        <form id="auth-form" class="ticket-form">
+          <label>
+            Логин сотрудника
+            <input type="text" name="username" placeholder="Например, checkin" autocomplete="username" required>
+          </label>
+          <label>
+            Пароль входного контроля
+            <input type="password" name="password" placeholder="Введите пароль" autocomplete="current-password" required>
+          </label>
+          <button class="button" type="submit">Войти</button>
+        </form>
+        <div id="auth-message" class="info-message">Эта страница доступна только сотрудникам площадки с отдельным паролем.</div>
+      </article>
+    </section>
+
+    <div id="protected-app" hidden>
+    <section class="section">
+      <div class="section-heading">
+        <p class="eyebrow">Входной контроль</p>
+        <h1 class="checkin-title">Модуль сканирования QR и фиксации входа.</h1>
+      </div>
+      <div class="payment-actions">
+        <button id="logout-button" class="button button--secondary" type="button">Выйти</button>
+      </div>
+      <article class="checkin-panel ornament-card">
+        <p class="checkin-note">Сканер поддерживает камеру устройства через встроенный web-сканер QR, fallback через `BarcodeDetector` и ручной ввод строки из QR или номера билета. Повторное сканирование покажет сообщение, что билет уже использован.</p>
+        <form id="checkin-form" class="checkin-form">
+          <input type="text" name="code" placeholder="Например, PF26-ABC123 или строка из QR" autofocus required>
+          <button class="button" type="submit">Проверить билет</button>
+        </form>
+        <div id="checkin-result" class="checkin-result">
+          <strong>Ожидание сканирования.</strong><br>После проверки здесь появится статус прохода.
+        </div>
+
+        <div class="scanner-shell">
+          <div class="scanner-grid">
+            <div>
+              <div id="scanner-reader" class="scanner-video"></div>
+              <video id="scanner-video" class="scanner-video" playsinline muted hidden></video>
+            </div>
+            <div>
+              <p class="eyebrow">Камера</p>
+              <p id="camera-status" class="camera-status">Камера не запущена.</p>
+              <div class="camera-actions">
+                <button id="start-scan" class="button" type="button">Запустить сканер</button>
+                <button id="stop-scan" class="button button--secondary" type="button">Остановить</button>
+              </div>
+              <p class="muted">Если устройство или браузер не поддерживают распознавание QR через камеру, используйте обычный проводной QR-сканер или ручной ввод.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="checkin-log ornament-card">
+        <p class="eyebrow">Журнал проходов</p>
+        <ul id="checkin-log-list" class="log-list"></ul>
+      </article>
+    </section>
+    </div>
+  </main>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

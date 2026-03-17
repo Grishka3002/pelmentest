@@ -1,0 +1,15 @@
+﻿{
+  "name": "sitepelmen",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "pdfkit": "^0.15.2",
+    "qrcode": "^1.5.4"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "load:test": "node load-test.js",
+    "load:orders": "node write-stress.js --mode orders",
+    "load:vote": "node write-stress.js --mode vote"
+  }
+}
