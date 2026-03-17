@@ -727,6 +727,10 @@ const api = {
   getTickets: async () => (await requestJson("/api/tickets")).tickets,
   createOrder: async (order) => requestJson("/api/orders", { method: "POST", body: JSON.stringify(order) }),
   getOrder: async (orderId) => requestJson(`/api/orders/${encodeURIComponent(orderId)}`),
+  confirmRobokassaSuccess: async (params) => {
+    const search = new URLSearchParams(params);
+    return requestJson(`/api/payments/robokassa/success?${search.toString()}`);
+  },
   createTeamApplication: async (payload) => requestJson("/api/team-applications", { method: "POST", body: JSON.stringify(payload) }),
   checkin: async (code) => requestJson("/api/checkin", { method: "POST", body: JSON.stringify({ code }) }),
   vote: async (code, team) => requestJson("/api/vote", { method: "POST", body: JSON.stringify({ code, team }) }),
@@ -1317,6 +1321,9 @@ async function restorePaidOrderFromQuery() {
   const orderId = String(params.get("Shp_orderId") || params.get("order") || "").trim();
   const paymentState = String(params.get("payment") || "").trim();
   const paymentFailedByHash = window.location.hash === "#payment-failed";
+  const robokassaInvId = String(params.get("InvId") || "").trim();
+  const robokassaOutSum = String(params.get("OutSum") || "").trim();
+  const robokassaSignature = String(params.get("SignatureValue") || "").trim();
 
   if (!orderId) {
     if (paymentState === "failed" || paymentFailedByHash) {
@@ -1345,6 +1352,32 @@ async function restorePaidOrderFromQuery() {
     email: "Ожидаем подтверждение Robokassa и выдачу билетов.",
   });
   setStep("payment");
+
+  if (robokassaInvId && robokassaOutSum && robokassaSignature) {
+    try {
+      const response = await api.confirmRobokassaSuccess({
+        InvId: robokassaInvId,
+        OutSum: robokassaOutSum,
+        SignatureValue: robokassaSignature,
+        Shp_orderId: orderId,
+      });
+      if (response.order?.status === "paid" && Array.isArray(response.tickets) && response.tickets.length) {
+        lastCreatedOrderTickets = response.tickets;
+        renderOrderTickets(lastCreatedOrderTickets);
+        paymentForm.hidden = true;
+        ticketForm.hidden = false;
+        ticketForm.reset();
+        pendingOrder = null;
+        const paramsToClear = ["Shp_orderId", "payment", "InvId", "OutSum", "SignatureValue"];
+        paramsToClear.forEach((key) => params.delete(key));
+        const nextQuery = params.toString();
+        window.history.replaceState({}, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
+        return;
+      }
+    } catch (error) {
+      // fallback to polling below
+    }
+  }
 
   const startedAt = Date.now();
   while (Date.now() - startedAt < 20000) {

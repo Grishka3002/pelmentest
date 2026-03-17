@@ -1923,6 +1923,55 @@ async function handleApi(req, res, pathname) {
     return;
   }
 
+  if (req.method === "GET" && pathname === "/api/payments/robokassa/success") {
+    const params = Object.fromEntries(new URL(req.url, `http://${req.headers.host}`).searchParams.entries());
+    const outSum = String(params.OutSum || "").trim();
+    const invId = String(params.InvId || "").trim();
+    const signature = String(params.SignatureValue || "").trim().toLowerCase();
+    const shpEntries = getSortedShpEntries(params).map(([key, value]) => [key, String(value || "").trim()]);
+
+    if (!outSum || !invId || !signature) {
+      return sendError(res, 400, "Недостаточно параметров SuccessURL.");
+    }
+
+    const expectedSignature = buildRobokassaSignature([outSum, invId], ROBOKASSA_PASS1, shpEntries).toLowerCase();
+    if (expectedSignature !== signature) {
+      return sendError(res, 400, "Некорректная подпись SuccessURL.");
+    }
+
+    const order = getOrderByInvId(db, invId);
+    if (!order) return sendError(res, 404, "Заказ не найден.");
+    if (formatRobokassaAmount(order.totalAmount) !== outSum) {
+      return sendError(res, 400, "Сумма платежа не совпадает с заказом.");
+    }
+
+    const orderIdFromShp = shpEntries.find(([key]) => key === "Shp_orderId")?.[1] || "";
+    if (orderIdFromShp && orderIdFromShp !== order.id) {
+      return sendError(res, 400, "ID заказа не совпадает.");
+    }
+
+    let nextOrder = order;
+    let tickets = getTicketsByOrderId(db, order.id);
+    if (order.status !== "paid" || !tickets.length) {
+      const paidAt = new Date().toISOString();
+      runTransaction(db, () => {
+        nextOrder = updateOrderPaymentStatus(db, order.id, {
+          status: "paid",
+          paymentReference: `Robokassa #${order.invId}`,
+          paidAt,
+        });
+        tickets = issueTicketsForPaidOrder(db, {
+          ...order,
+          status: "paid",
+          paymentReference: `Robokassa #${order.invId}`,
+          paidAt,
+        });
+      });
+    }
+
+    return sendJson(res, 200, { ok: true, order: nextOrder, tickets });
+  }
+
   if (req.method === "POST" && pathname === "/api/checkin") {
     if (!requireRole(req, res, "checkin")) return;
     const body = await parseBody(req);
